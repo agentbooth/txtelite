@@ -35,8 +35,6 @@ of Elite with no combat or missions.
 #include <string.h>
 #include <time.h>
 
-#include <conio.h>
-#include <graph.h>
 #include <math.h>
 #include <malloc.h>
 
@@ -46,15 +44,15 @@ of Elite with no combat or missions.
 
 #define maxlen (20) /* Length of strings */
 
-typedef int boolean;
 typedef unsigned char uint8;
 typedef unsigned short uint16;
 typedef signed short int16;
-typedef signed long int32;
+typedef signed int int32;
 
-typedef uint16 uint;
+#define uint uint16
 
-typedef int planetnum;
+typedef int16 boolean;
+typedef int16 planetnum;
 
 
 typedef struct
@@ -123,8 +121,8 @@ uint     fuel;
 markettype localmarket;
 uint     holdspace;
 
-int fuelcost =2; /* 0.2 CR/Light year */
-int maxfuel =70; /* 7.0 LY tank */
+int16 fuelcost =2; /* 0.2 CR/Light year */
+int16 maxfuel =70; /* 7.0 LY tank */
 
 const uint16 base0=0x5A4A;
 const uint16 base1=0x0248;
@@ -218,7 +216,7 @@ char tradnames[lasttrade][maxlen]; /* Tradegood names used in text commands
 void goat_soup(const char *source,plansys * psy);
 
 
-#define nocomms (14)
+#define nocomms (15)
 
 boolean dobuy(char *);
 boolean dosell(char *);
@@ -239,31 +237,28 @@ char commands[nocomms][maxlen]=
   {"buy",        "sell",     "fuel",     "jump",
    "cash",       "mkt",      "help",     "hold",
    "sneak",      "local",    "info",     "galhyp",
-	 "quit",       "rand"	
+   "quit",       "rand",     "?"
   };
 
 boolean (*comfuncs[nocomms])(char *)=
    {dobuy,         dosell,       dofuel,    dojump,
     docash,        domkt,        dohelp,    dohold,
     dosneak,       dolocal,      doinfo,    dogalhyp,
-		doquit,				 dotweakrand
+    doquit,        dotweakrand,  dohelp
   };  
 
 /**- General functions **/
 
 
-void port_srand(unsigned int);
-int port_rand(void);
+static uint16 lastrand = 0;
 
-static unsigned int lastrand = 0;
-
-void mysrand(unsigned int seed)
+void mysrand(uint16 seed)
 {	srand(seed);
 	lastrand = seed - 1;
 }
 
-int myrand(void)
-{	int r;
+int16 myrand(void)
+{	int16 r;
 	if(nativerand) r=rand();
 	else
 	{	// As supplied by D McDonnell	from SAS Insititute C
@@ -286,13 +281,13 @@ void stop(char * string)
 }
 
  /**+  ftoi **/
-signed int ftoi(double value)
-{ return ((signed int)floor(value+0.5));
+int16 ftoi(double value)
+{ return ((int16)floor(value+0.5));
 }
 
  /**+  ftoi2 **/
-signed int ftoi2(double value)
-{ return ((signed int)floor(value));
+int16 ftoi2(double value)
+{ return ((int16)floor(value));
 }
 
 void tweakseed(seedtype *s)
@@ -314,18 +309,18 @@ void stripout(char *s,const char c) /* Remove all c's from string s */
     s[j]=0;
 }
 
-int toupper(char c)
+int16 toupper(char c)
 {	if((c>='a')&&(c<='z')) return(c+'A'-'a');
-	return((int)c);
+	return((int16)c);
 }
 
-int tolower(char c)
+int16 tolower(char c)
 {	if((c>='A')&&(c<='Z')) return(c+'a'-'A');
-	return((int)c);
+	return((int16)c);
 }
 
 
-int stringbeg(char *s,char *t)
+int16 stringbeg(char *s,char *t)
 /* Return nonzero iff string t begins with non-empty string s */
 { size_t i=0;
   size_t l=strlen(s);
@@ -363,7 +358,7 @@ void spacesplit(char *s,char *t)
 /**-Functions for stock market **/
 
 uint gamebuy(uint i, uint a)
- /* Try to buy ammount a  of good i  Return ammount bought */
+ /* Try to buy amount a  of good i  Return amount bought */
  /* Cannot buy more than is availble, can afford, or will fit in hold */
 {   uint t;
     if(cash<0) t=0;
@@ -407,9 +402,9 @@ markettype genmarket(uint fluct, plansys p)
 {	markettype market;
   unsigned short i;
   for(i=0;i<=lasttrade;i++)
-  {	signed int q; 
-    signed int product = (p.economy)*(commodities[i].gradient);
-    signed int changing = fluct & (commodities[i].maskbyte);
+  {	int16 q;
+    int16 product = (p.economy)*(commodities[i].gradient);
+    int16 changing = fluct & (commodities[i].maskbyte);
 		q =  (commodities[i].basequant) + changing - product;	
     q = q&0xFF;
     if(q&0x80) {q=0;};                       /* Clip to positive 8-bit */
@@ -428,10 +423,10 @@ void displaymarket(markettype m)
 {	unsigned short i;
  	for(i=0;i<=lasttrade;i++)
  	{ printf("\n");
-   printf(commodities[i].name);
+   printf("%s",commodities[i].name);
    printf("   %.1f",((float)(m.price[i])/10));
    printf("   %u",m.quantity[i]);
-   printf(unitnames[commodities[i].units]);
+   printf("%s",unitnames[commodities[i].units]);
    printf("   %u",shipshold[i]);
  }
 }	
@@ -573,13 +568,13 @@ void prisys(plansys plsy,boolean compressed)
 	}
 	else
 	{	printf("\n\nSystem:  ");
-  	printf(plsy.name);
+  	printf("%s",plsy.name);
   	printf("\nPosition (%i,",plsy.x);
   	printf("%i)",plsy.y);
   	printf("\nEconomy: (%i) ",plsy.economy);
-  	printf(econnames[plsy.economy]);
+  	printf("%s",econnames[plsy.economy]);
   	printf("\nGovernment: (%i) ",plsy.govtype);
-  	printf(govnames[plsy.govtype]);
+  	printf("%s",govnames[plsy.govtype]);
   	printf("\nTech Level: %2i",(plsy.techlev)+1);
   	printf("\nTurnover: %u",(plsy.productivity));
   	printf("\nRadius: %u",plsy.radius);
@@ -666,7 +661,7 @@ boolean dohold(char *s)
   return true;
 }
 
-boolean dosell(char *s) /* Sell ammount S(2) of good S(1) */
+boolean dosell(char *s) /* Sell amount S(2) of good S(1) */
 {	uint i,a,t;
   char s2[maxlen];
   spacesplit(s,s2);
@@ -681,17 +676,17 @@ boolean dosell(char *s) /* Sell ammount S(2) of good S(1) */
   if(t==0) { printf("Cannot sell any "); }
   else
   {	printf("\nSelling %i",t);
-    printf(unitnames[commodities[i].units]);
+    printf("%s",unitnames[commodities[i].units]);
     printf(" of ");
   }
-    printf(tradnames[i]);
+    printf("%s",tradnames[i]);
 
     return true;
 
 }
 
    
-boolean dobuy(char *s) /* Buy ammount S(2) of good S(1) */
+boolean dobuy(char *s) /* Buy amount S(2) of good S(1) */
 {	uint i,a,t;
   char s2[maxlen];
   spacesplit(s,s2);
@@ -705,17 +700,17 @@ boolean dobuy(char *s) /* Buy ammount S(2) of good S(1) */
 	if(t==0) printf("Cannot buy any ");
   else
   { printf("\nBuying %i",t);
-    printf(unitnames[commodities[i].units]);
+    printf("%s",unitnames[commodities[i].units]);
     printf(" of ");
   }
-  printf(tradnames[i]);
+  printf("%s",tradnames[i]);
   return true;
 }
 
 uint gamefuel(uint f) /* Attempt to buy f tonnes of fuel */
 { if(f+fuel>maxfuel)  f=maxfuel-fuel;
 	if(fuelcost>0)
-	{	if((int)f*fuelcost>cash)  f=(uint)(cash/fuelcost);
+	{	if((int16)f*fuelcost>cash)  f=(uint)(cash/fuelcost);
 	}
   fuel+=f;
   cash-=fuelcost*f;
@@ -724,7 +719,7 @@ uint gamefuel(uint f) /* Attempt to buy f tonnes of fuel */
 
 
 boolean dofuel(char *s)
-/* Buy ammount S of fuel */
+/* Buy amount S of fuel */
 {	uint f=gamefuel((uint)floor(10*atof(s)));
   if(f==0) { printf("\nCan't buy any fuel");}
   printf("\nBuying %.1fLY fuel",(float)f/10);
@@ -732,8 +727,8 @@ boolean dofuel(char *s)
 }
 
 boolean docash(char *s) /* Cheat alter cash by S */
-{	int a=(int)(10*atof(s));
-  cash+=(long)a;
+{	int16 a=(int16)(10*atof(s));
+  cash+=(int32)a;
   if(a!=0) return true;
   printf("Number not understood");
   return false;
@@ -754,7 +749,7 @@ boolean parser(char *s) /* Obey command s */
    i=stringmatch(c,commands,nocomms);
    if(i)return (*comfuncs[i-1])(s) ;
    printf("\n Bad command (");
-   printf(c);
+   printf("%s",c);
    printf(")");
    return false;
 }
@@ -770,9 +765,9 @@ boolean dohelp(char *s)
 {
    (void)(&s);
    printf("\nCommands are:");
-   printf("\nBuy   tradegood ammount");
-   printf("\nSell  tradegood ammount");
-   printf("\nFuel  ammount    (buy ammount LY of fuel)");
+   printf("\nBuy   tradegood amount");
+   printf("\nSell  tradegood amount");
+   printf("\nFuel  amount     (buy amount LY of fuel)");
    printf("\nJump  planetname (limited by fuel)");
    printf("\nSneak planetname (any distance - no fuel cost)");
    printf("\nGalhyp           (jumps to next galaxy)");
@@ -782,8 +777,8 @@ boolean dohelp(char *s)
    printf("\nCash number      (alters cash - cheating!)");
    printf("\nHold number      (change cargo bay)");
    printf("\nQuit or ^C       (exit)");
-   printf("\nHelp             (display this text)");
- 	 printf("\nRand             (toggle RNG)");
+   printf("\nHelp or ?        (display this text)");
+   printf("\nRand             (toggle RNG)");
    printf("\n\nAbbreviations allowed eg. b fo 5 = Buy Food 5, m= Mkt");
 return true;
 }
@@ -816,7 +811,8 @@ int main()
 
    for(;;)
    { printf("\n\nCash :%.1f>",((float)cash)/10);
-     gets(getcommand);
+     fgets(getcommand,maxlen,stdin);
+     stripout(getcommand,'\n');
      parser(getcommand);
    }
    
@@ -884,8 +880,8 @@ static struct desc_choice desc_list[] =
 	 B2 = <random name>
 */
 
-int gen_rnd_number (void)
-{	int a,x;
+int16 gen_rnd_number (void)
+{	int16 a,x;
 	x = (rnd_seed.a * 2) & 0xFF;
 	a = x + rnd_seed.c;
 	if (rnd_seed.a > 127)	a++;
@@ -903,22 +899,22 @@ int gen_rnd_number (void)
 
 void goat_soup(const char *source,plansys * psy)
 {	for(;;)
-	{	int c=*(source++);
+	{	unsigned char c=*(source++);
 		if(c=='\0')	break;
 		if(c<0x80) printf("%c",c);
 		else
 		{	if (c <=0xA4)
-			{	int rnd = gen_rnd_number();
+			{	int16 rnd = gen_rnd_number();
 				goat_soup(desc_list[c-0x81].option[(rnd >= 0x33)+(rnd >= 0x66)+(rnd >= 0x99)+(rnd >= 0xCC)],psy);
 			}
 			else switch(c)
 			{ case 0xB0: /* planet name */
-		 		{ int i=1;
+		 		{ int16 i=1;
 					printf("%c",psy->name[0]);
 					while(psy->name[i]!='\0') printf("%c",tolower(psy->name[i++]));
 				}	break;
 				case 0xB1: /* <planet name>ian */
-				{ int i=1;
+				{ int16 i=1;
 					printf("%c",psy->name[0]);
 					while(psy->name[i]!='\0')
 					{	if((psy->name[i+1]!='\0') || ((psy->name[i]!='E')	&& (psy->name[i]!='I')))
@@ -934,11 +930,11 @@ void goat_soup(const char *source,plansys * psy)
 
 #if 1 // 1.5
 {
-int i;
-int len = gen_rnd_number() & 3;
+int16 i;
+int16 len = gen_rnd_number() & 3;
 for (i = 0; i <= len; i++)
 {
-int x = gen_rnd_number() & 0x3e;
+int16 x = gen_rnd_number() & 0x3e;
 if (i == 0)
  {
  printf("%c",pairs0[x]);
@@ -956,10 +952,10 @@ else
 
 
 
-				{	int i;
-					int len = gen_rnd_number() & 3;
+				{	int16 i;
+					int16 len = gen_rnd_number() & 3;
 					for(i=0;i<=len;i++)
-					{	int x = gen_rnd_number() & 0x3e;
+					{	int16 x = gen_rnd_number() & 0x3e;
 						if(pairs0[x]!='.') printf("%c",pairs0[x]);
 						if(i && (pairs0[x+1]!='.')) printf("%c",pairs0[x+1]);
 					}
